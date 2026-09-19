@@ -1,0 +1,14 @@
+[
+  {
+    "name": "easylist",
+    "url": "https://easylist.to/easylist/easylist.txt",
+    "sha256": "3ad7e506d49e846fcc228b24d92790c5d162ea2538338b9d1f44c772854fa7d4",
+    "downloadedAt": "2026-09-19T22:42:07.927Z"
+  },
+  {
+    "name": "easylist-germany",
+    "url": "https://easylist.to/easylistgermany/easylistgermany.txt",
+    "sha256": "5e54af11c699086250dc14ef5c983c5dcb4f1fbbd3574ed378082b13217fd9ba",
+    "downloadedAt": "2026-09-19T22:42:08.051Z"
+  }
+]

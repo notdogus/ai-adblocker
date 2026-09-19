@@ -1,0 +1,49 @@
+{
+  "name": "ai-adblocker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox --mv3",
+    "postinstall": "wxt prepare",
+    "filters:build": "tsx scripts/build-filters.ts",
+    "filters:update": "tsx scripts/update-filters.ts",
+    "build": "npm run filters:build && wxt build && wxt build -b firefox --mv3",
+    "zip": "wxt zip && wxt zip -b firefox --mv3 && python3 scripts/verify-packages.py",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "test": "vitest run",
+    "test:browser": "tsx tests/browser/run.ts",
+    "test:live": "tsx tests/browser/live.ts"
+  },
+  "dependencies": {
+    "idb": "^8.0.3",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@adguard/dnr-converter": "^1.1.2",
+    "@adguard/re2-wasm": "^1.2.0",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/selenium-webdriver": "^4.35.7",
+    "@wxt-dev/module-react": "^1.2.2",
+    "geckodriver": "^6.1.1",
+    "playwright": "^1.63.0",
+    "selenium-webdriver": "^4.49.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "wxt": "^0.21.4"
+  },
+  "overrides": {
+    "@adguard/scriptlets": {
+      "js-yaml": "3.15.2"
+    }
+  }
+}
