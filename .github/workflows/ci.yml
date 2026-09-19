@@ -31,4 +31,6 @@ jobs:
         with:
           name: extension-builds
           path: .output/*.zip
+          # WXT's output directory is hidden; upload only the verified ZIPs.
+          include-hidden-files: true
           if-no-files-found: error
