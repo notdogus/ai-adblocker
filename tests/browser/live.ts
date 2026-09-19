@@ -32,8 +32,9 @@ try {
           if (await video.count()) {
             const host = new URL(frame.url()).hostname;
             if (enabled && ['www.ani-stream.com', 'hubu.cloud'].includes(host)) {
-              await video.evaluate(async (v: any) => { v.muted = true; await v.play(); });
-              await delay(1200);
+              // Do not click or call play from the test. The player adapter must
+              // disable the pre-roll configuration and start the content stream.
+              await delay(1800);
             }
             row.playerFrames.push({ host, videoPresent: true, state: await video.evaluate((v: any) => ({ readyState: v.readyState, paused: v.paused, currentTime: v.currentTime })) });
           }

@@ -20,8 +20,14 @@ the options page and toolbar popup. Blocking never waits for a cloud inference.
    probabilities, not a separate confidence score. The resolved model is retained.
 6. Code applies the two thresholds and persists only narrowly scoped rules.
    Content scripts hide already loaded resource elements matching those rules.
+7. A MAIN-world player adapter receives only the local enabled/exclusion result.
+   For players that expose an advertising configuration before initialization, it
+   disables that configuration and lets the content stream start directly.
 
-Classifying an observed loader can prevent its entire downstream ad chain. Timing
+Classifying an observed loader can prevent its entire downstream ad chain. Player
+ad handling follows the same cause-first rule: it changes an explicit pre-roll
+configuration before player initialization. It does not click skip controls, seek
+through media, or rewrite a video stream. Timing
 alone never establishes causality. The extension does not reconstruct JavaScript
 call stacks or download scripts for source analysis. The initial rule deliberately
 includes the entire observed query: URL rotation can require a new decision.

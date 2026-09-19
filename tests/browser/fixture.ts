@@ -14,10 +14,15 @@ export async function startFixture() {
     } else if (path === '/banner.svg') {
       res.setHeader('Content-Type', 'image/svg+xml'); res.end('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="100"><rect width="320" height="100" fill="orange"/></svg>');
     } else if (path === '/ad-child') { res.end('ad delivery'); }
+    else if (path === '/player-ad' || path === '/player-stream') { res.end(path === '/player-ad' ? 'player ad' : 'content stream'); }
     else {
       res.setHeader('Content-Type', 'text/html');
       const nested = path === '/nested';
-      res.end(`<!doctype html><html><head><title>Blocker test fixture</title></head><body><h1>Article and player remain usable</h1><p id="app-status">Loading</p><video id="player" controls></video><script src="/app.js"></script>${nested ? `<iframe title="Nested test" src="http://127.0.0.1:${port}/frame"></iframe>` : `<script title="Advertisement" class="advertisement" src="http://127.0.0.1:${port}/commercial-loader.js?unit=sidebar"></script><img title="Advertisement" src="http://127.0.0.1:${port}/banner.svg"><div class="adsbygoogle" style="height:20px">Known cosmetic advert</div>`}</body></html>`);
+      if (path === '/player') {
+        res.end(`<!doctype html><html><head><title>Player fixture</title></head><body><p id="player-status">pending</p><video id="player" controls></video><script>window.player__config={ads:{enabled:true,displayFrame:true,fallback:'waterfall',waterfall:['vast'],fad:{enabled:1}},playlist:{sources:[{src:'https://stream.example/episode.m3u8'}]}};setTimeout(()=>fetch(window.player__config.ads.enabled?'/player-ad':'/player-stream'),100);document.querySelector('#player-status').textContent=window.player__config.ads.enabled?'ads-on':'ads-off';</script></body></html>`);
+      } else {
+        res.end(`<!doctype html><html><head><title>Blocker test fixture</title></head><body><h1>Article and player remain usable</h1><p id="app-status">Loading</p><video id="player" controls></video><script src="/app.js"></script>${nested ? `<iframe title="Nested test" src="http://127.0.0.1:${port}/frame"></iframe>` : `<script title="Advertisement" class="advertisement" src="http://127.0.0.1:${port}/commercial-loader.js?unit=sidebar"></script><img title="Advertisement" src="http://127.0.0.1:${port}/banner.svg"><div class="adsbygoogle" style="height:20px">Known cosmetic advert</div>`}</body></html>`);
+      }
     }
   });
   await new Promise<void>(resolve => server.listen(0, '0.0.0.0', resolve));

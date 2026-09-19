@@ -5,6 +5,7 @@ import { blocked, known, shouldLearn, topSite } from '../../lib/policy';
 import { compileRules, supportsExactRule } from '../../lib/rules';
 import { parseCosmetic, selectorsFor } from '../../lib/cosmetics';
 import { compactRules } from '../../lib/compact-rules';
+import { disableConfiguredAds, hasAdvertisingConfiguration } from '../../lib/player';
 
 const candidate: Candidate = { id: '1', site: 'publisher.example', url: 'https://cdn.example/banner.js?unit=sidebar', type: 'script', origin: 'network' };
 describe('privacy boundary', () => {

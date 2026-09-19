@@ -8,7 +8,7 @@ model outputs can change; these observations are not an all-sites guarantee.
 ## Automated checks
 
 - TypeScript validation and both WXT production builds pass.
-- 19 Vitest tests cover URL/text redaction, provider parsing and failures,
+- 21 Vitest tests cover URL/text redaction, provider parsing and failures,
   decision boundaries, exact URL rules, publisher scope and nested Firefox frame
   ancestry, releases, cosmetic exceptions and equivalent network-rule compaction.
 - The production builds pass Chromium/Playwright and Firefox/Selenium tests.
@@ -24,6 +24,12 @@ the provider unavailable. Application code still runs. The same resource on a
 different top-level host remains allowed. Manual releases, website bypasses,
 budget exhaustion, reset, malformed responses and deleting the key are exercised.
 Subdomain releases are also checked against subsequently learned parent-domain rules.
+The browser fixture also exposes an explicit pre-roll configuration: with protection
+enabled it is disabled before playback, while a website exclusion leaves it unchanged.
+Its player-side request counter records zero `/player-ad` requests and one
+`/player-stream` request with protection enabled; the inverse is observed for the
+excluded site. This verifies cause removal at the player configuration boundary,
+not merely hiding a rendered ad.
 
 The Firefox test helper tolerates a specific Marionette disconnect during browser
 shutdown and stops Geckodriver; errors during test commands still fail the suite.
@@ -49,9 +55,12 @@ tested ad containers. Protected runs produce browser request-failure events inst
 of responses. Firefox uses native extension `webRequest` response/error observers;
 Resource Timing entries alone are not interpreted as successful downloads.
 
-Chromium reports both tested player videos ready and advancing after programmatic
-muted playback. A separate viewport inspection confirms the visible player still
-renders. The site's consent overlay remains, as requested by the ads-only scope.
+In the protected Chromium run, the Ani-Stream player reaches ready state and its
+content time advances without a test-side click or `play()` call. The second Hubu
+player remains loaded but is not auto-started because it exposes no equivalent
+explicit pre-roll configuration in this run. A separate viewport inspection
+confirms the visible Ani-Stream player still renders. The site's consent overlay
+remains, as requested by the ads-only scope.
 Chat loading was checked without posting messages. These checks do not claim a
 complete interactive audit of chat, all navigation links, or every possible ad.
 
@@ -85,4 +94,7 @@ full compatibility with every EasyList construct.
 Unknown sources may load once or remain uncertain. Rotating URLs require fresh
 decisions. Inline ads, inaccessible browser frames, service-worker-delivered cached
 content and advertising embedded in the actual media stream can evade this v1
-approach. Mozilla signing and store review are not part of this release.
+approach. Supported players with explicit pre-roll configuration are handled before
+initialization; no skip button is clicked and no ad is sought through. Browser
+autoplay policy may still require a user gesture. Mozilla signing and store review
+are not part of this release.

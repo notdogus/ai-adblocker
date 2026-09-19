@@ -37,6 +37,9 @@ These releases override AI rules, not the bundled filter lists.
 
 - Native request blocking for known ad servers, scripts, frames and creatives.
 - CSS filtering for supported advertising selectors, including domain exceptions.
+- For supported embedded players, disables the player's explicit pre-roll/ad
+  configuration before initialization and attempts a direct content-stream start;
+  it never seeks through an ad or clicks a skip control.
 - Background-only TypeSafe requests with two independent Noul judgments: ad
   purpose and necessity for real content. Automatic learning requires respectively
   at least 0.95 and at most 0.10.
@@ -54,7 +57,10 @@ anti-tracking list, rewrite video streams, bypass player restrictions, or guaran
 complete ad removal on every website. Sources with little evidence can remain
 unclassified. Pure inline advertising with no identifiable resource is not learned
 as a network rule. Standard browser restrictions and content served entirely from
-a site's service-worker cache can limit coverage. Private browsing is disabled.
+a site's service-worker cache can limit coverage. Player ad suppression only works
+where the provider exposes an explicit ad configuration; it does not seek past a
+running ad, click a Skip button, or alter content inside the actual stream.
+Browser autoplay policy can still require a user gesture. Private browsing is disabled.
 
 ## Development and tests
 

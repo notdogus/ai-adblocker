@@ -83,6 +83,7 @@ export async function firefoxDriver() {
     },
     async open(url: string) { await driver.switchTo().window(pageHandle); await driver.get(url); },
     async appReady() { await driver.switchTo().window(pageHandle); return driver.executeScript('return document.querySelector("#app-status")?.textContent'); },
+    async playerConfig() { await driver.switchTo().window(pageHandle); return driver.executeScript('return globalThis.player__config?.ads ?? null'); },
     async screenshot(path: string) { await driver.switchTo().window(optionsHandle); await writeFile(path, await driver.takeScreenshot(), 'base64'); },
     async refreshOptions() { /* Keep the mock's extension-page closure alive. */ },
     async restart() { await shutdown(); await launch(); },

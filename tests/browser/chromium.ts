@@ -35,6 +35,7 @@ export async function chromiumDriver() {
     async rpc(type: string, args: Record<string, unknown> = {}) { return options.evaluate(({ type, args }) => (globalThis as any).chrome.runtime.sendMessage({ type, ...args }), { type, args }); },
     async open(url: string) { await page.goto(url, { waitUntil: 'load' }); },
     async appReady() { return page.locator('#app-status').textContent(); },
+    async playerConfig() { return page.evaluate(() => (globalThis as any).player__config?.ads ?? null); },
     async screenshot(path: string) { await options.screenshot({ path, fullPage: true }); },
     async refreshOptions() { await options.reload(); await options.waitForSelector('input[name=model]'); },
     async restart() { await context.close(); await launch(); },

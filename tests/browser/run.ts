@@ -18,6 +18,25 @@ for (const factory of factories) {
     await driver.rpc('key', { key: 'test-only-not-a-real-key' });
     const state = await driver.rpc('state');
     await driver.rpc('settings', { settings: { ...state.settings, aiEnabled: true } });
+    await driver.open(`${fixture.url}/player`);
+    await delay(500); // allow the isolated content script to publish protection state
+    const protectedPlayer = await driver.playerConfig();
+    await delay(250);
+    assert.equal(protectedPlayer.enabled, false, `${driver.name}: player pre-roll configuration disabled before playback`);
+    assert.equal(protectedPlayer.displayFrame, false);
+    assert.deepEqual(protectedPlayer.waterfall, []);
+    assert.equal(protectedPlayer.fad.enabled, 0);
+    assert.equal(fixture.counts['/player-ad'] ?? 0, 0, `${driver.name}: player ad request is never created`);
+    assert.equal(fixture.counts['/player-stream'] ?? 0, 1, `${driver.name}: content stream request is created`);
+    await driver.rpc('site', { site: 'localhost', enabled: false });
+    fixture.reset();
+    await driver.open(`${fixture.url}/player`);
+    await delay(500);
+    const bypassedPlayer = await driver.playerConfig();
+    await delay(250);
+    assert.equal(bypassedPlayer.enabled, true, `${driver.name}: excluded website keeps player configuration unchanged`);
+    assert.equal(fixture.counts['/player-ad'] ?? 0, 1, `${driver.name}: excluded website leaves player ad behavior unchanged`);
+    await driver.rpc('site', { site: 'localhost', enabled: true });
     // A release on a subdomain must survive a later parent-domain rule.
     const subUrl = fixture.url.replace('localhost', 'news.localhost');
     for (const url of [subUrl, fixture.url]) {

@@ -19,7 +19,9 @@ long identifiers and numeric tokens are removed from transmitted URL paths/text.
 This is data minimization, not a guarantee that every personal detail in a URL or
 element attribute can be recognized. Hostnames and ordinary path segments remain
 visible to TypeSafe. The extension never reads form values, chat text, full DOM
-text, cookies, request bodies, audio, screenshots or video for inference.
+text, cookies, request bodies, audio, screenshots or video for inference. The
+player adapter inspects only the page's explicit player configuration locally and
+does not send it to TypeSafe.
 
 The API key is stored in extension-origin IndexedDB and read by the background
 context. It is not encrypted with a separate user password; anyone with access to

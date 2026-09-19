@@ -35,9 +35,12 @@ export default defineBackground(() => {
     serialRules = operation.catch(() => {});
     return operation;
   }
-  async function notifyTabs() {
-    const tabs = await browser.tabs.query({});
-    await Promise.allSettled(tabs.filter(t => t.id !== undefined).map(t => browser.tabs.sendMessage(t.id!, { type: 'refresh' })));
+  function notifyTabs() {
+    // UI refresh is best-effort. A discarded or privileged tab must never hold
+    // a settings, key, release, or reset request open.
+    void browser.tabs.query({}).then(tabs => Promise.allSettled(tabs.filter(t => t.id !== undefined).map(t =>
+      browser.tabs.sendMessage(t.id!, { type: 'refresh' }),
+    ))).catch(() => {});
   }
   const ready = (async () => {
     if (!firefox && browser.storage.local.setAccessLevel) await browser.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });

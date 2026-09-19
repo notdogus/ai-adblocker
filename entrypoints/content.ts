@@ -59,6 +59,9 @@ export default defineContentScript({
       try {
         const result = await browser.runtime.sendMessage({ type: 'context' });
         if (current !== revision || ctx.isInvalid) return;
+        // postMessage crosses Chrome/Firefox's isolated-to-main-world boundary
+        // reliably; custom-event objects do not on every browser version.
+        window.postMessage({ type: 'ai-adblocker-player-state', enabled: result.enabled === true }, '*');
         enabled = result.enabled; aiEnabled = result.aiEnabled; learned = result.rules;
         restore(); style?.remove();
         if (enabled && result.selectors.length) {
