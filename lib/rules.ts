@@ -8,7 +8,8 @@ export function compileRules(state: State, firefox: boolean): any[] {
   }));
   const learned = firefox ? [] : state.rules.map(rule => ({
     id: rule.id, priority: 1000, action: { type: 'block' },
-    condition: { urlFilter: `|${rule.url}|`, isUrlFilterCaseSensitive: true, topDomains: [rule.site], resourceTypes: [rule.type] },
+    condition: { urlFilter: `|${rule.url}|`, isUrlFilterCaseSensitive: true, topDomains: [rule.site], resourceTypes: [rule.type],
+      excludedTopDomains: state.allows.filter(allow => allow.url === rule.url && allow.type === rule.type).map(allow => allow.site) },
   }));
   return [...disabled, ...learned];
 }

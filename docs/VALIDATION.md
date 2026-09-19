@@ -8,7 +8,7 @@ model outputs can change; these observations are not an all-sites guarantee.
 ## Automated checks
 
 - TypeScript validation and both WXT production builds pass.
-- 18 Vitest tests cover URL/text redaction, provider parsing and failures,
+- 19 Vitest tests cover URL/text redaction, provider parsing and failures,
   decision boundaries, exact URL rules, publisher scope and nested Firefox frame
   ancestry, releases, cosmetic exceptions and equivalent network-rule compaction.
 - The production builds pass Chromium/Playwright and Firefox/Selenium tests.
@@ -23,6 +23,7 @@ child request are all **zero**. This remains true after browser restart and with
 the provider unavailable. Application code still runs. The same resource on a
 different top-level host remains allowed. Manual releases, website bypasses,
 budget exhaustion, reset, malformed responses and deleting the key are exercised.
+Subdomain releases are also checked against subsequently learned parent-domain rules.
 
 The Firefox test helper tolerates a specific Marionette disconnect during browser
 shutdown and stops Geckodriver; errors during test commands still fail the suite.

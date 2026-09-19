@@ -218,7 +218,7 @@ export default defineBackground(() => {
         stopLearning(); await updateState(s => { s.rules = []; s.status = 'Gelernte Regeln gelöscht. Freigaben bleiben erhalten.'; });
         await synchronize(); await notifyTabs(); return;
       }
-      if (message.type === 'clearAllows') { stopLearning(); await updateState(s => { s.allows = []; }); return; }
+      if (message.type === 'clearAllows') { stopLearning(); await updateState(s => { s.allows = []; }); await synchronize(); await notifyTabs(); return; }
       throw new Error('Unbekannte Nachricht.');
     })();
   });

@@ -18,6 +18,26 @@ for (const factory of factories) {
     await driver.rpc('key', { key: 'test-only-not-a-real-key' });
     const state = await driver.rpc('state');
     await driver.rpc('settings', { settings: { ...state.settings, aiEnabled: true } });
+    // A release on a subdomain must survive a later parent-domain rule.
+    const subUrl = fixture.url.replace('localhost', 'news.localhost');
+    for (const url of [subUrl, fixture.url]) {
+      await driver.open(url);
+      const until = Date.now() + 20000;
+      while ((await driver.rpc('state')).rules.length < 2 && Date.now() < until) await delay(300);
+      const current = await driver.rpc('state');
+      assert.equal(current.rules.length, 2, 'subdomain fixture learns both sources');
+      if (url === subUrl) {
+        await driver.rpc('allow', { id: current.rules.find((r: any) => r.type === 'script').id });
+        await driver.rpc('reset');
+      }
+    }
+    fixture.reset(); await driver.open(subUrl); await delay(300);
+    assert.ok((fixture.counts['/commercial-loader.js'] ?? 0) > 0, 'subdomain release overrides later parent rule');
+    assert.equal(fixture.counts['/banner.svg'] ?? 0, 0, 'unreleased resource remains blocked');
+    await driver.rpc('clearAllows');
+    fixture.reset(); await driver.open(subUrl); await delay(300);
+    assert.equal(fixture.counts['/commercial-loader.js'] ?? 0, 0, 'removing release immediately restores parent rule');
+    await driver.rpc('reset');
     await driver.open(`${fixture.url}/nested`);
     const deadline = Date.now() + 20000;
     let learned;

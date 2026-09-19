@@ -49,6 +49,14 @@ describe('conservative local policy', () => {
     expect(compileRules(state, true)).toEqual([]);
     expect(supportsExactRule('https://example.com/*')).toBe(false);
   });
+  it('preserves a subdomain release when a parent-domain rule is learned later', () => {
+    const state = initialState();
+    state.allows.push({ ...candidate, site: 'sub.publisher.example' });
+    state.rules.push({ ...candidate, id: 1, ad: .99, essential: .01, model: 'test', classifierVersion: 'v1', createdAt: '' });
+    expect(blocked({ ...candidate, site: 'sub.publisher.example' }, state)).toBe(false);
+    expect(blocked(candidate, state)).toBe(true);
+    expect(compileRules(state, false)[0].condition.excludedTopDomains).toEqual(['sub.publisher.example']);
+  });
 });
 describe('filter semantics', () => {
   it('honors generic and per-domain cosmetic exceptions and exclusions', () => {
