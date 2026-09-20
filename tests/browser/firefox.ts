@@ -63,18 +63,23 @@ export async function firefoxDriver() {
       // global to extension pages. eval is disabled by production CSP, so use
       // a function assigned directly instead (the closure belongs to this page).
       const result = await driver.executeAsyncScript(`const done=arguments[arguments.length-1]; browser.runtime.getBackgroundPage().then(bg=>{
-        bg.__originalFetch ??= bg.fetch.bind(bg); bg.__inferenceCalls=0;
+        bg.__originalFetch ??= bg.fetch.bind(bg); bg.__inferenceCalls=0; bg.__evaluatedCandidates=[];
         bg.fetch=async (input,init)=>{
           if(String(input)!=='https://api.typesafe.ai/v1/systemone')return bg.__originalFetch(input,init);
           bg.__inferenceCalls++;
           if(arguments[0]==='offline')throw new Error('offline');
           if(arguments[0]==='malformed')return new bg.Response('{}');
           const body=JSON.parse(init.body), answers={};
-          body.state.candidates.forEach((c,i)=>{const ad=/commercial-loader|banner\\.svg|standalone-unit/.test(c.url)||c.type==='popup'||c.type==='overlay'&&/sponsor-layer/.test(c.marker);answers['ad_'+i]={type:'noul',noul:ad?.99:.01};answers['essential_'+i]={type:'noul',noul:ad?.01:.99};});
+          bg.__evaluatedCandidates.push(...body.state.candidates);
+          body.state.candidates.forEach((c,i)=>{const ad=/commercial-loader|banner\\.svg|standalone-unit/.test(c.url)||c.type==='popup'||c.type==='overlay'&&(/sponsor-layer/.test(c.marker)||c.evidence?.interceptsPlayback);answers['ad_'+i]={type:'noul',noul:ad?.99:.01};answers['essential_'+i]={type:'noul',noul:ad?.01:.99};});
           return new bg.Response(JSON.stringify({model:'jev-test-fixture',answers}));
         };done(null);
       }).catch(e=>done(String(e)));`, mode);
       if (result) throw new Error(String(result));
+    },
+    async evaluations(): Promise<any[]> {
+      await driver.switchTo().window(optionsHandle);
+      return driver.executeAsyncScript(`const done=arguments[arguments.length-1];browser.runtime.getBackgroundPage().then(bg=>done(bg.__evaluatedCandidates??[]));`);
     },
     async rpc(type: string, args: Record<string, unknown> = {}) {
       await driver.switchTo().window(optionsHandle);

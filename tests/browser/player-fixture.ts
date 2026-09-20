@@ -30,6 +30,7 @@ export async function playerFixture() {
       const draw=()=>{const c=canvas.getContext('2d');c.fillStyle='hsl('+Date.now()%360+',50%,50%)';c.fillRect(0,0,320,180);};draw();setInterval(draw,100);
       video.srcObject=canvas.captureStream(10);
       function sideEffect(){window.open('${origin}/promotion','_blank');window.afterPopup=true;}
+      window.addClickShield=()=>{window.shield?.remove();const cover=document.createElement('div');cover.style='position:absolute;inset:0;z-index:100000';cover.onclick=sideEffect;document.querySelector('#player').append(cover);window.shield=cover;};
       document.querySelector('#play').addEventListener('click',()=>{sideEffect();video.play();});
       document.querySelector('#outside').onclick=sideEffect;
       document.querySelector('#realm').onclick=()=>{const iframe=document.createElement('iframe');iframe.style.display='none';document.body.append(iframe);const popup=iframe.contentWindow.open('about:blank','','width=1,height=1');if(popup)popup.location.href='${origin}/promotion';iframe.remove();window.realmDone=true;};

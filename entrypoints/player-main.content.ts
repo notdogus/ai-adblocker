@@ -16,6 +16,7 @@ export default defineContentScript({
     const add = window.addEventListener.bind(window);
     const now = performance.now.bind(performance);
     const observed = new Set<string>();
+    const observedTargets = new WeakSet<Element>();
     const initialResponses = new Set<object>();
     let observations = 0;
     function emit(value: unknown) {
@@ -71,8 +72,12 @@ export default defineContentScript({
       const prevent = preventPopup({ enabled, playerGesture: current?.player ?? false, explicitDestination, learnedCaller: Boolean(source && callers.has(source)), unrequestedBlank });
       if (!explicitDestination && (source || prevent)) {
         const key = `${source}:${Boolean(current?.player)}:${!destination || destination === 'about:blank'}`;
-        if (!source || !observed.has(key)) {
+        // A known caller can place a fresh shield over the player. Script-level
+        // deduplication must not prevent the isolated script from disarming it.
+        const freshTarget = prevent && current?.player && current.target && !observedTargets.has(current.target);
+        if (!source || !observed.has(key) || freshTarget) {
           observed.add(key);
+          if (current?.target) observedTargets.add(current.target);
           emit({ source, evidence: { kind: 'popup', playerGesture: current?.player ?? false, blank, unrequestedBlank, unrelatedDestination: Boolean((current?.player || unrequestedBlank) && !explicitDestination) } });
         }
       }

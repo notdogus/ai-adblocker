@@ -32,6 +32,7 @@ export async function chromiumDriver() {
     name: 'Chromium', errors,
     get page() { return page; }, get context() { return context; }, get optionsPage() { return options; }, get worker() { return worker; },
     async mock(mode: 'success' | 'offline' | 'malformed') { await worker.evaluate(mockTransport, mode); },
+    async evaluations(): Promise<any[]> { return worker.evaluate(() => (globalThis as any).__evaluatedCandidates ?? []); },
     async rpc(type: string, args: Record<string, unknown> = {}) { return options.evaluate(({ type, args }) => (globalThis as any).chrome.runtime.sendMessage({ type, ...args }), { type, args }); },
     async open(url: string) { await page.goto(url, { waitUntil: 'load' }); },
     async appReady() { return page.locator('#app-status').textContent(); },

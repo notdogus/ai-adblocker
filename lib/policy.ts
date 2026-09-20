@@ -1,5 +1,9 @@
 import { domainMatches } from './cosmetics';
 import type { Candidate, CandidateType, Decision, State } from './types';
+export function evidenceStrength(candidate: Pick<Candidate, 'evidence'>): number {
+  if (!candidate.evidence) return 0;
+  return candidate.evidence.kind === 'popup' || candidate.evidence.interceptsPlayback ? 2 : 1;
+}
 export function enabledFor(site: string, state: State): boolean {
   return !state.settings.disabledSites.some(domain => domainMatches(site, domain));
 }

@@ -34,15 +34,17 @@ export function mockTransport(mode: 'success' | 'offline' | 'malformed') {
   const root = globalThis as any;
   root.__originalFetch ??= root.fetch.bind(root);
   root.__inferenceCalls = 0;
+  root.__evaluatedCandidates = [];
   root.fetch = async (input: any, init?: RequestInit) => {
     if (String(input) !== 'https://api.typesafe.ai/v1/systemone') return root.__originalFetch(input, init);
     root.__inferenceCalls++;
     if (mode === 'offline') throw new Error('Test provider unavailable');
     if (mode === 'malformed') return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
     const body = JSON.parse(String(init?.body));
+    root.__evaluatedCandidates.push(...body.state.candidates);
     const answers: Record<string, unknown> = {};
     body.state.candidates.forEach((candidate: any, index: number) => {
-      const ad = /commercial-loader|banner\.svg|standalone-unit/.test(candidate.url) || candidate.type === 'popup' || candidate.type === 'overlay' && /sponsor-layer/.test(candidate.marker);
+      const ad = /commercial-loader|banner\.svg|standalone-unit/.test(candidate.url) || candidate.type === 'popup' || candidate.type === 'overlay' && (/sponsor-layer/.test(candidate.marker) || candidate.evidence?.interceptsPlayback);
       answers[`ad_${index}`] = { type: 'noul', noul: ad ? .99 : .01 };
       answers[`essential_${index}`] = { type: 'noul', noul: ad ? .01 : .99 };
     });

@@ -93,6 +93,7 @@ private test artifacts in release archives and check that licenses are included.
 ```sh
 npm run test:live                    # OnePiece-Tube browser checks
 npm run test:players:live            # requested player pages; bounded real Jev use
+npm run test:archivebate:live         # complete Archivebate flow and keyless revisit
 npm run test:players:model           # real Jev player learning, at most five calls
 npx tsx tests/browser/model-live.ts   # small labeled Jev smoke corpus
 ```
@@ -104,6 +105,12 @@ automatic all-ads-gone certification. `test:live` also exercises real browser-to
 that variable is present. Never put a key in a `WXT_*`/`VITE_*` variable or commit
 an environment file. Screenshots and live outputs remain in ignored
 `test-results/`; they are not automatically published.
+
+`test:archivebate:live` continues the site's entry dialog in a disposable Chromium
+profile, clicks the embedded player and asserts advancing video, no new windows
+and no remaining empty center shield. It repeats with the key removed, uses at
+most 12 real inference calls, and stores only technical metadata. Set `LIVE_MODEL=0`
+to test both visits without a key or inference.
 
 The offline suite uses server-side request counters to verify that blocking a
 learned loader also prevents its child request. It tests nested frames, restart

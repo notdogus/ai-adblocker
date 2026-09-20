@@ -64,6 +64,20 @@ for (const factory of factories) {
     await click('#navigate'); await delay(150);
     assert.equal(await execute('location.hash'), '#details', 'same-context navigation is not treated as a popup');
 
+    // Archivebate-style unlabelled shield: an uncertain geometry judgment must
+    // not suppress stronger evidence when the same element triggers a popup.
+    await execute('window.addClickShield()');
+    await until(async () => (await driver.evaluations()).some(c => c.type === 'overlay' && !c.marker.trim() && !c.evidence.interceptsPlayback), 'unlabelled shield assessed from geometry');
+    assert.notEqual(await execute('getComputedStyle(window.shield).display'), 'none', 'geometry alone does not hide an unclassified layer');
+    const beforeLearnedShield = await windows();
+    await click('#player > div:last-child');
+    await until(async () => (await driver.rpc('state')).rules.some((r: any) => r.type === 'overlay' && r.selector.includes('nth-of-type')), 'popup evidence upgrades the previously uncertain shield');
+    assert.equal(await windows(), beforeLearnedShield, 'previously observed caller cannot open a new advertising window');
+    assert.equal(await execute('getComputedStyle(window.shield).display'), 'none', 'fresh shield from the same caller is disarmed');
+    await execute('window.addClickShield()');
+    await until(async () => await execute('getComputedStyle(window.shield).display === "none"'), 'learned shield removed before another click');
+    assert.equal((await driver.evaluations()).filter(c => c.type === 'overlay' && c.evidence.interceptsPlayback).length, 1, 'stronger evidence is evaluated once');
+
     await driver.mock('offline'); await driver.rpc('key', { key: '' });
     await driver.restart(); await driver.mock('offline');
     fixture.reset(); await driver.open(`${fixture.url}/nested-player`); frame = true; await delay(600);
@@ -73,6 +87,8 @@ for (const factory of factories) {
     await until(async () => await execute('getComputedStyle(document.querySelector(".sponsor-layer")).display === "none"'), 'persisted overlay works without key');
     await click('#play');
     await until(async () => await execute('document.querySelector("video").currentTime > .2'), 'playback without inference');
+    await execute('window.addClickShield()');
+    await until(async () => await execute('getComputedStyle(window.shield).display === "none"'), 'learned unlabelled shield removed without a key after restart');
     const beforeShield = await windows();
     await execute('(() => { const cover=document.createElement("div"); cover.style="position:absolute;inset:0;z-index:100000"; cover.onclick=()=>window.open("about:blank"); document.querySelector("#player").append(cover); return true; })()');
     await click('#player > div:last-child');

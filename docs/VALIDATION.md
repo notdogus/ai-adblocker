@@ -93,6 +93,12 @@ popup/overlay rules survive restart and key removal. Current-page overlay remova
 manual release, a classless click shield, restoration when that element gains real
 media, and site bypass are exercised. No mocks ship in the extension.
 
+An Archivebate-style classless shield is first assessed from geometry and left
+alone. Its subsequent popup attempt upgrades that same candidate despite the
+earlier assessment and despite a previously observed caller. Exactly one causal
+assessment learns the overlay; replacement shields disappear before another click.
+The rule survives browser restart and key removal in both Chromium and Firefox.
+
 A separate **real Jev** fixture run consumed two calls and learned a sponsored
 player overlay (ad 0.93 / essential 0.04) and a popup side effect (0.94 / 0.05).
 The overlay disappeared while the video continued advancing beyond 15 seconds.
@@ -119,11 +125,15 @@ These are protocol fixtures, not proof of every live YouTube ad format.
   seconds. A repeated center click can pause an already playing video, so the live
   runner checks playback state before repeating it.
 - **Archivebate:** investigation reproduced a blank-window popunder borrowed from
-  a fresh iframe and separate transparent click shields. After the fix, that
-  blank-window attempt created no window. The final page run observed zero
-  popups, but its age-verification gate remained in place and the player was not
-  clicked through that gate. Complete end-to-end playback and all overlays on
-  this page are **not certified** by this run.
+  a fresh iframe and separate transparent click shields. The focused Chromium
+  test now continues the entry dialog and clicks the actual embedded player.
+  Initial playback advanced beyond four seconds, and the keyless revisit beyond
+  six seconds, both without media errors or a new window. No empty shield remained
+  at the player center. A separate fresh-profile run without any API key also
+  played beyond six seconds with zero windows. This is a specific live flow,
+  not a guarantee about every rotating creative or overlay. Reproduce with
+  `npm run test:archivebate:live`; a created popup counts as failure even if the
+  test closes it immediately.
 - **YouTube:** after declining optional cookies in the disposable profile, actual
   playback advanced from 1.98 to 3.42 seconds without pausing or a media error.
   Earlier immediate pauses came from the site's still-open consent dialog.
@@ -131,6 +141,17 @@ These are protocol fixtures, not proof of every live YouTube ad format.
   are the controlled browser cases above; this session did not establish a
   reproducible live pre-roll/mid-roll ad sample. Server-stitched advertising is
   outside this adapter.
+
+The focused real-Jev Archivebate run demonstrates the evidence upgrade: the
+unlabelled embedded-player shield scored ad 0.64 / essential 0.12 from geometry,
+then 0.86 / 0.05 after its popup attempt and became an overlay rule. Two popup
+callers also became scoped side-effect rules (0.92 / 0.07 and 0.92 / 0.05).
+The run used ten API calls, created no new window and played beyond six seconds.
+The model did not need to classify the entire player bundle as disposable.
+A repeated live session learned only the popup rules, illustrating that model
+judgments vary. Local shield protection still allowed playback on both visits
+with zero windows, but required two to three player clicks. One-click startup for
+every unknown or uncertain overlay is not established by these checks.
 
 Technical live reports remain in ignored `test-results/`. The live runner does
 not count autoplaying advertising videos or recommendation previews as successful

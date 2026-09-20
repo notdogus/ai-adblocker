@@ -53,9 +53,14 @@ application. This threshold reflects their lower impact, not a measured global
 false-positive guarantee. Only the latter can become a network block, with the existing
 ad >= 0.95 / essential <= 0.10 thresholds. A popup rule suppresses future calls
 from that exact script on the publisher while leaving its playback functions
-running. A later behavioral observation may enrich a prior URL-only assessment
-once. Behavioral evidence gets queue priority; budget, cooldown and rule limits
-remain shared with ordinary learning.
+running. Evidence advances through bounded stages: URL metadata, overlay geometry,
+then an observed popup or intercepted playback click. Each resource is evaluated
+at most once per stage; a stronger observation can upgrade a previous uncertain
+judgment. Weaker observations cannot replace stronger pending evidence. Observed
+side effects get priority over geometry and ordinary resources; budget, cooldown
+and rule limits remain shared with ordinary learning. A new shield from an already
+observed caller still reaches local protection, without repeating that caller's
+model evaluation.
 
 Overlay discovery is bounded to media-adjacent elements and hit-tested player
 geometry. It excludes actual media, controls, subtitles and containers containing

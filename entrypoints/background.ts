@@ -3,7 +3,7 @@ import { readState, updateState, getKey, setKey } from '../lib/storage';
 import { CLASSIFIER_VERSION, RESOURCE_TYPES, fingerprint, type Candidate, type ResourceType, type Settings } from '../lib/types';
 import { httpUrl, sanitizeCandidate, sanitizedUrl, playerEvidence } from '../lib/privacy';
 import { validOverlaySelector } from '../lib/player-policy';
-import { blocked, enabledFor, known, shouldLearn, topSite } from '../lib/policy';
+import { blocked, enabledFor, evidenceStrength, known, shouldLearn, topSite } from '../lib/policy';
 import { compileRules, supportsExactRule } from '../lib/rules';
 import { selectorsFor, type CosmeticRule } from '../lib/cosmetics';
 import { TypeSafeProvider } from '../lib/provider';
@@ -11,7 +11,7 @@ import { TypeSafeProvider } from '../lib/provider';
 export default defineBackground(() => {
   const firefox = import.meta.env.FIREFOX;
   const pending = new Map<string, Candidate>();
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const blockedByBrowser = new Set<string>();
   const tabUrls = new Map<number, string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -53,18 +53,19 @@ export default defineBackground(() => {
     const state = await readState();
     if (!state.settings.aiEnabled || !enabledFor(candidate.site, state) || known(candidate, state) || (RESOURCE_TYPES.includes(candidate.type as ResourceType) && !supportsExactRule(candidate.url))) return;
     const key = fingerprint(candidate);
-    // A later observed side effect provides evidence absent from the initial URL
-    // classification. Permit exactly one richer evaluation, not endless retries.
-    const observationKey = candidate.evidence ? `${key}:behavior` : key;
-    if (seen.has(observationKey) || blockedByBrowser.has(key) || Date.now() < cooldown) return;
+    // Geometry alone may be inconclusive. A later intercepted popup supplies
+    // new evidence about the same shield; permit only increasing evidence stages.
+    const strength = evidenceStrength(candidate);
+    if ((seen.get(key) ?? -1) >= strength || blockedByBrowser.has(key) || Date.now() < cooldown) return;
     if (pending.size >= 100 && !pending.has(key)) {
-      const disposable = candidate.evidence ? [...pending.entries()].find(([, c]) => !c.evidence) : undefined;
+      const disposable = [...pending.entries()].sort(([, a], [, b]) => evidenceStrength(a) - evidenceStrength(b))
+        .find(([, c]) => evidenceStrength(c) < strength);
       if (!disposable) return;
       pending.delete(disposable[0]);
     }
     // DOM evidence enriches the same observed request before the next batch.
     const existing = pending.get(key);
-    pending.set(key, existing && (candidate.origin === 'network' || existing.evidence && !candidate.evidence) ? existing : candidate);
+    pending.set(key, existing && (candidate.origin === 'network' || evidenceStrength(existing) > strength) ? existing : candidate);
     if (!timer && !working) timer = setTimeout(() => { timer = undefined; void drain(); }, 1500);
   }
   async function drain() {
@@ -77,9 +78,9 @@ export default defineBackground(() => {
       const state = await readState(); const key = await getKey();
       if (!key || !state.settings.aiEnabled || Date.now() < cooldown) { pending.clear(); return; }
       const batch = [...pending.values()].filter(c => enabledFor(c.site, state) && !known(c, state))
-        .sort((a, b) => Number(Boolean(b.evidence)) - Number(Boolean(a.evidence))).slice(0, 8);
+        .sort((a, b) => evidenceStrength(b) - evidenceStrength(a)).slice(0, 8);
       if (!batch.length) { pending.clear(); return; }
-      for (const candidate of batch) { const id = fingerprint(candidate); pending.delete(id); seen.add(candidate.evidence ? `${id}:behavior` : id); seen.add(id); }
+      for (const candidate of batch) { const id = fingerprint(candidate); pending.delete(id); seen.set(id, evidenceStrength(candidate)); }
       if (seen.size > 5000) seen.clear();
       let reserved = false;
       await updateState(s => {
