@@ -37,9 +37,19 @@ These releases override AI rules, not the bundled filter lists.
 
 - Native request blocking for known ad servers, scripts, frames and creatives.
 - CSS filtering for supported advertising selectors, including domain exceptions.
+- Local player intent protection in nested and inherited-origin frames: unexpected
+  windows (including blank popunders and synthetic links) are stopped at creation.
+  Fresh same-origin iframe windows cannot supply an unguarded `open()` function.
+- Jev evaluates popup side effects separately from whole script resources. Shared
+  player code stays usable; advertising-only loaders can become network rules.
+  Separate overlay elements can become restricted, frame-origin-scoped rules.
+- A YouTube adapter removes separate `playerAds`, `adPlacements` and `adSlots`
+  from recognized initial/fetch/XHR player responses. A fallback clicks an available
+  skip control only during an explicit ad state; it never seeks through content.
 - Background-only TypeSafe requests with two independent Noul judgments: ad
-  purpose and necessity for real content. Automatic learning requires respectively
-  at least 0.95 and at most 0.10.
+  purpose and necessity for real content. Network rules require ad >= 0.95 and
+  essential <= 0.10. Restricted popup/overlay actions use ad >= 0.85 with the same
+  essential-content veto, plus local intent and structure checks.
 - Exact URL and resource-type rules scoped to a website and its subdomains.
   Request query strings stay significant. A shared CDN is never automatically
   blocked as a whole.
@@ -52,8 +62,10 @@ These releases override AI rules, not the bundled filter lists.
 This focuses on advertising. It does not remove cookie banners, add a general
 anti-tracking list, rewrite video streams, bypass player restrictions, or guarantee
 complete ad removal on every website. Sources with little evidence can remain
-unclassified. Pure inline advertising with no identifiable resource is not learned
-as a network rule. Standard browser restrictions and content served entirely from
+unclassified. Inline player overlays can be learned as element rules even without their own
+network resource. Uncertain classifications remain allowed. Advertising embedded
+in the media bytes, new player protocols, early startup races and deliberate
+tampering with page-world hooks can still limit protection. Standard browser restrictions and content served entirely from
 a site's service-worker cache can limit coverage. Private browsing is disabled.
 
 ## Development and tests
@@ -65,7 +77,8 @@ npm run typecheck
 npm test
 npm run build
 npx playwright install chromium
-npm run test:browser         # isolated Chromium + Firefox, no real API calls
+npm run test:browser         # core + player tests, Chromium/Firefox, no real API calls
+npm run test:players         # player tests only, including YouTube adapter fixtures
 npm run zip                 # package both builds
 ```
 
@@ -79,11 +92,15 @@ private test artifacts in release archives and check that licenses are included.
 
 ```sh
 npm run test:live                    # OnePiece-Tube browser checks
+npm run test:players:live            # requested player pages; bounded real Jev use
+npm run test:players:model           # real Jev player learning, at most five calls
 npx tsx tests/browser/model-live.ts   # small labeled Jev smoke corpus
 ```
 
 Live model tests require `TYPESAFE_API_KEY` in the test process environment and
-consume API usage. `test:live` also exercises real browser-to-TypeSafe learning if
+consume API usage. `test:players:live` uses at most 12 inference calls when a key is present and
+records technical metadata only. The live report is an observation, not an
+automatic all-ads-gone certification. `test:live` also exercises real browser-to-TypeSafe learning if
 that variable is present. Never put a key in a `WXT_*`/`VITE_*` variable or commit
 an environment file. Screenshots and live outputs remain in ignored
 `test-results/`; they are not automatically published.

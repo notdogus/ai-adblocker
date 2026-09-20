@@ -1,7 +1,8 @@
 import { browser } from 'wxt/browser';
 import { readState, updateState, getKey, setKey } from '../lib/storage';
 import { CLASSIFIER_VERSION, RESOURCE_TYPES, fingerprint, type Candidate, type ResourceType, type Settings } from '../lib/types';
-import { httpUrl, sanitizeCandidate, sanitizedUrl } from '../lib/privacy';
+import { httpUrl, sanitizeCandidate, sanitizedUrl, playerEvidence } from '../lib/privacy';
+import { validOverlaySelector } from '../lib/player-policy';
 import { blocked, enabledFor, known, shouldLearn, topSite } from '../lib/policy';
 import { compileRules, supportsExactRule } from '../lib/rules';
 import { selectorsFor, type CosmeticRule } from '../lib/cosmetics';
@@ -50,12 +51,20 @@ export default defineBackground(() => {
   async function enqueue(candidate: Candidate) {
     await ready;
     const state = await readState();
-    if (!state.settings.aiEnabled || !enabledFor(candidate.site, state) || known(candidate, state) || !supportsExactRule(candidate.url)) return;
+    if (!state.settings.aiEnabled || !enabledFor(candidate.site, state) || known(candidate, state) || (RESOURCE_TYPES.includes(candidate.type as ResourceType) && !supportsExactRule(candidate.url))) return;
     const key = fingerprint(candidate);
-    if (seen.has(key) || blockedByBrowser.has(key) || pending.size >= 100 || Date.now() < cooldown) return;
+    // A later observed side effect provides evidence absent from the initial URL
+    // classification. Permit exactly one richer evaluation, not endless retries.
+    const observationKey = candidate.evidence ? `${key}:behavior` : key;
+    if (seen.has(observationKey) || blockedByBrowser.has(key) || Date.now() < cooldown) return;
+    if (pending.size >= 100 && !pending.has(key)) {
+      const disposable = candidate.evidence ? [...pending.entries()].find(([, c]) => !c.evidence) : undefined;
+      if (!disposable) return;
+      pending.delete(disposable[0]);
+    }
     // DOM evidence enriches the same observed request before the next batch.
     const existing = pending.get(key);
-    pending.set(key, existing && candidate.origin === 'network' ? existing : candidate);
+    pending.set(key, existing && (candidate.origin === 'network' || existing.evidence && !candidate.evidence) ? existing : candidate);
     if (!timer && !working) timer = setTimeout(() => { timer = undefined; void drain(); }, 1500);
   }
   async function drain() {
@@ -67,9 +76,10 @@ export default defineBackground(() => {
     try {
       const state = await readState(); const key = await getKey();
       if (!key || !state.settings.aiEnabled || Date.now() < cooldown) { pending.clear(); return; }
-      const batch = [...pending.values()].filter(c => enabledFor(c.site, state) && !known(c, state)).slice(0, 8);
+      const batch = [...pending.values()].filter(c => enabledFor(c.site, state) && !known(c, state))
+        .sort((a, b) => Number(Boolean(b.evidence)) - Number(Boolean(a.evidence))).slice(0, 8);
       if (!batch.length) { pending.clear(); return; }
-      for (const candidate of batch) { const id = fingerprint(candidate); pending.delete(id); seen.add(id); }
+      for (const candidate of batch) { const id = fingerprint(candidate); pending.delete(id); seen.add(candidate.evidence ? `${id}:behavior` : id); seen.add(id); }
       if (seen.size > 5000) seen.clear();
       let reserved = false;
       await updateState(s => {
@@ -86,9 +96,10 @@ export default defineBackground(() => {
         s.status = 'Letzte Analyse erfolgreich.';
         for (const decision of decisions) {
           const candidate = batch.find(c => c.id === decision.id);
-          if (!candidate || !shouldLearn(decision) || known(candidate, s) || !enabledFor(candidate.site, s)) continue;
+          if (!candidate || !shouldLearn(decision, candidate.type) || known(candidate, s) || !enabledFor(candidate.site, s)) continue;
           if (s.rules.length >= 2000) { s.status = 'Regellimit erreicht (2.000). Regeln verwalten, um weiterzulernen.'; break; }
           s.rules.push({ id: s.nextRuleId++, site: candidate.site, url: candidate.url, type: candidate.type, origin: candidate.origin,
+            ...(candidate.selector ? { selector: candidate.selector } : {}),
             ad: decision.ad, essential: decision.essential, model: decision.model, classifierVersion: CLASSIFIER_VERSION, createdAt: new Date().toISOString() });
         }
       });
@@ -146,12 +157,25 @@ export default defineBackground(() => {
   async function frameContext(sender: any) {
     if (!sender.tab || sender.tab.incognito) return { enabled: false, selectors: [], rules: [], aiEnabled: false };
     const site = httpUrl(tabUrls.get(sender.tab.id) ?? sender.tab.url)?.hostname;
-    const frameHost = httpUrl(sender.url)?.hostname;
+    const frameHost = (await frameUrl(sender))?.hostname;
     const state = await readState();
     if (!site || !frameHost || !enabledFor(site, state)) return { enabled: false, selectors: [], rules: [], aiEnabled: false };
     cosmetics ??= fetch(browser.runtime.getURL('/rules/cosmetic.json')).then(r => r.json());
     return { enabled: true, aiEnabled: state.settings.aiEnabled, selectors: selectorsFor(await cosmetics, frameHost),
-      rules: state.rules.filter(r => blocked({ ...r, id: String(r.id), site }, state)).map(r => ({ url: r.url, type: r.type })) };
+      rules: state.rules.filter(r => blocked({ ...r, id: String(r.id), site }, state)).map(r => ({ url: r.url, type: r.type, selector: r.selector })) };
+  }
+  async function frameUrl(sender: any): Promise<URL | undefined> {
+    const direct = httpUrl(sender.url);
+    if (direct) return direct;
+    // Inherited-origin about:blank/srcdoc frames also host player code. Resolve
+    // their ancestry through the browser, never from a page-provided site value.
+    if (sender.tab?.id === undefined || !/^(about:|blob:|data:)/.test(sender.url ?? '')) return;
+    const frames = await browser.webNavigation.getAllFrames({ tabId: sender.tab.id });
+    let frame = frames?.find(f => f.frameId === sender.frameId);
+    for (let depth = 0; frame && depth < 16; depth++) {
+      const url = httpUrl(frame.url); if (url) return url;
+      frame = frames?.find(f => f.frameId === frame!.parentFrameId);
+    }
   }
   browser.runtime.onMessage.addListener((message: any, sender) => {
     return (async () => {
@@ -161,12 +185,17 @@ export default defineBackground(() => {
       if (message.type === 'candidates') {
         if (!sender.tab || sender.tab.incognito || !Array.isArray(message.candidates)) return;
         const site = httpUrl(tabUrls.get(sender.tab.id!) ?? sender.tab.url)?.hostname;
-        if (!site || !httpUrl(sender.url)) return;
+        const frame = await frameUrl(sender);
+        if (!site || !frame) return;
         for (const input of message.candidates.slice(0, 60)) {
           const url = httpUrl(input?.url);
-          if (!url || !RESOURCE_TYPES.includes(input.type)) continue;
+          if (!url || ![...RESOURCE_TYPES, 'popup', 'overlay'].includes(input.type)) continue;
+          const evidence = playerEvidence(input.evidence);
+          if (input.type === 'popup' && evidence?.kind !== 'popup') continue;
+          if (input.type === 'overlay' && (!validOverlaySelector(input.selector) || url.href !== `${frame.origin}/` || evidence?.kind !== 'overlay' || !evidence.overlaysPlayer)) continue;
           url.hash = '';
-          const candidate: Candidate = { id: crypto.randomUUID(), site, url: url.href, type: input.type, origin: 'dom' };
+          const candidate: Candidate = { id: crypto.randomUUID(), site, url: url.href, type: input.type, origin: evidence ? 'behavior' : 'dom',
+            ...(input.type === 'overlay' ? { selector: input.selector } : {}), ...(evidence ? { evidence } : {}) };
           for (const field of ['tag', 'label', 'marker'] as const) if (typeof input[field] === 'string') candidate[field] = input[field].slice(0, 180);
           await enqueue(candidate);
         }
@@ -211,7 +240,7 @@ export default defineBackground(() => {
       }
       if (message.type === 'allow') {
         stopLearning();
-        await updateState(s => { const rule = s.rules.find(r => r.id === message.id); if (rule) { s.allows.push({ site: rule.site, url: rule.url, type: rule.type }); s.rules = s.rules.filter(r => r.id !== rule.id); } });
+        await updateState(s => { const rule = s.rules.find(r => r.id === message.id); if (rule) { s.allows.push({ site: rule.site, url: rule.url, type: rule.type, ...(rule.selector ? { selector: rule.selector } : {}) }); s.rules = s.rules.filter(r => r.id !== rule.id); } });
         await synchronize(); await notifyTabs(); return;
       }
       if (message.type === 'reset') {

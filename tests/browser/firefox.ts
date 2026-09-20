@@ -70,7 +70,7 @@ export async function firefoxDriver() {
           if(arguments[0]==='offline')throw new Error('offline');
           if(arguments[0]==='malformed')return new bg.Response('{}');
           const body=JSON.parse(init.body), answers={};
-          body.state.candidates.forEach((c,i)=>{const ad=/commercial-loader|banner\\.svg/.test(c.url);answers['ad_'+i]={type:'noul',noul:ad?.99:.01};answers['essential_'+i]={type:'noul',noul:ad?.01:.99};});
+          body.state.candidates.forEach((c,i)=>{const ad=/commercial-loader|banner\\.svg|standalone-unit/.test(c.url)||c.type==='popup'||c.type==='overlay'&&/sponsor-layer/.test(c.marker);answers['ad_'+i]={type:'noul',noul:ad?.99:.01};answers['essential_'+i]={type:'noul',noul:ad?.01:.99};});
           return new bg.Response(JSON.stringify({model:'jev-test-fixture',answers}));
         };done(null);
       }).catch(e=>done(String(e)));`, mode);

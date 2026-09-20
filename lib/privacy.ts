@@ -1,4 +1,12 @@
-import type { Candidate, SafeCandidate } from './types';
+import type { Candidate, SafeCandidate, PlayerEvidence } from './types';
+export function playerEvidence(input: any): PlayerEvidence | undefined {
+  if (!input || !['popup', 'overlay'].includes(input.kind)) return;
+  const result: PlayerEvidence = { kind: input.kind };
+  for (const field of ['playerGesture', 'blank', 'unrelatedDestination', 'overlaysPlayer', 'externalLink', 'interceptsPlayback', 'containsMedia', 'containsControls', 'unrequestedBlank'] as const) {
+    if (typeof input[field] === 'boolean') result[field] = input[field];
+  }
+  return result;
+}
 export function httpUrl(value: unknown): URL | undefined {
   if (typeof value !== 'string' || value.length > 4096) return;
   try { const url = new URL(value); if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) return url; } catch { /* invalid URL */ }
@@ -25,5 +33,6 @@ export function sanitizeCandidate(c: Candidate): SafeCandidate {
     ...(c.tag ? { tag: c.tag.slice(0, 20) } : {}),
     ...(c.marker ? { marker: redactText(c.marker) } : {}),
     ...(c.label ? { label: redactText(c.label) } : {}),
+    ...(c.evidence ? { evidence: playerEvidence(c.evidence) } : {}),
   };
 }

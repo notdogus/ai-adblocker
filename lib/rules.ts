@@ -1,4 +1,4 @@
-import type { State } from './types';
+import { RESOURCE_TYPES, type ResourceType, type State } from './types';
 export const DISABLED_PRIORITY = 100_000;
 export function compileRules(state: State, firefox: boolean): any[] {
   const disabled = state.settings.disabledSites.map((site, index) => ({
@@ -6,7 +6,7 @@ export function compileRules(state: State, firefox: boolean): any[] {
     action: { type: 'allowAllRequests' },
     condition: { requestDomains: [site], resourceTypes: ['main_frame'] },
   }));
-  const learned = firefox ? [] : state.rules.map(rule => ({
+  const learned = firefox ? [] : state.rules.filter(rule => RESOURCE_TYPES.includes(rule.type as ResourceType)).map(rule => ({
     id: rule.id, priority: 1000, action: { type: 'block' },
     condition: { urlFilter: `|${rule.url}|`, isUrlFilterCaseSensitive: true, topDomains: [rule.site], resourceTypes: [rule.type],
       excludedTopDomains: state.allows.filter(allow => allow.url === rule.url && allow.type === rule.type).map(allow => allow.site) },

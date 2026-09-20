@@ -1,12 +1,15 @@
 """Check release archives without printing credentials or archive contents."""
 import os
 import re
+import json
 import zipfile
 from pathlib import Path
 
-archives = sorted(Path('.output').glob('ai-adblocker-*.zip'))
-if len(archives) != 3:
-    raise SystemExit('Expected exactly two browser archives and one sources archive.')
+version = json.loads(Path('package.json').read_text())['version']
+archives = [Path('.output') / f'ai-adblocker-{version}-{kind}.zip'
+            for kind in ('chrome', 'firefox', 'sources')]
+if not all(archive.is_file() for archive in archives):
+    raise SystemExit('Missing a browser or sources archive for the current package version.')
 secret = os.environ.get('TYPESAFE_API_KEY', '').encode()
 key_pattern = re.compile(rb'apikey_[0-9a-f]{24,}_[0-9a-f]{24,}', re.I)
 for archive in archives:

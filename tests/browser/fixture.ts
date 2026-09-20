@@ -42,7 +42,7 @@ export function mockTransport(mode: 'success' | 'offline' | 'malformed') {
     const body = JSON.parse(String(init?.body));
     const answers: Record<string, unknown> = {};
     body.state.candidates.forEach((candidate: any, index: number) => {
-      const ad = /commercial-loader|banner\.svg/.test(candidate.url);
+      const ad = /commercial-loader|banner\.svg|standalone-unit/.test(candidate.url) || candidate.type === 'popup' || candidate.type === 'overlay' && /sponsor-layer/.test(candidate.marker);
       answers[`ad_${index}`] = { type: 'noul', noul: ad ? .99 : .01 };
       answers[`essential_${index}`] = { type: 'noul', noul: ad ? .01 : .99 };
     });

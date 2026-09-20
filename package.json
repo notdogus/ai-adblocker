@@ -17,7 +17,10 @@
     "zip": "wxt zip && wxt zip -b firefox --mv3 && python3 scripts/verify-packages.py",
     "typecheck": "wxt prepare && tsc --noEmit",
     "test": "vitest run",
-    "test:browser": "tsx tests/browser/run.ts",
+    "test:browser": "tsx tests/browser/run.ts && npm run test:players",
+    "test:players": "tsx tests/browser/player.ts && tsx tests/browser/youtube.ts",
+    "test:players:live": "tsx tests/browser/player-live.ts",
+    "test:players:model": "tsx tests/browser/player-model-live.ts",
     "test:live": "tsx tests/browser/live.ts"
   },
   "dependencies": {
