@@ -46,7 +46,7 @@ export default defineBackground(() => {
     for (const tab of await browser.tabs.query({})) if (tab.id !== undefined && tab.url) tabUrls.set(tab.id, tab.url);
     await synchronize();
   })();
-  ready.catch(() => { void updateState(s => { s.status = 'Regeln konnten nicht aktiviert werden. Extension neu laden.'; }); });
+  ready.catch(() => { void updateState(s => { s.status = 'Rules could not be activated. Reload the extension.'; }); });
 
   async function enqueue(candidate: Candidate) {
     await ready;
@@ -87,18 +87,18 @@ export default defineBackground(() => {
         const day = new Date().toISOString().slice(0, 10);
         if (s.budget.day !== day) s.budget = { day, calls: 0 };
         if (s.budget.calls < s.settings.dailyLimit) { s.budget.calls++; reserved = true; }
-        else s.status = 'Tageslimit erreicht. Gespeicherte Regeln bleiben aktiv.';
+        else s.status = 'Daily limit reached. Saved rules stay active.';
       });
       if (!reserved) { pending.clear(); return; }
       const decisions = await new TypeSafeProvider(key, state.settings.model).evaluate(batch.map(sanitizeCandidate), controller.signal);
       if (generation !== epoch) return;
       await updateState(s => {
         if (generation !== epoch || !s.settings.aiEnabled) return;
-        s.status = 'Letzte Analyse erfolgreich.';
+        s.status = 'Last analysis succeeded.';
         for (const decision of decisions) {
           const candidate = batch.find(c => c.id === decision.id);
           if (!candidate || !shouldLearn(decision, candidate.type) || known(candidate, s) || !enabledFor(candidate.site, s)) continue;
-          if (s.rules.length >= 2000) { s.status = 'Regellimit erreicht (2.000). Regeln verwalten, um weiterzulernen.'; break; }
+          if (s.rules.length >= 2000) { s.status = 'Rule limit reached (2,000). Manage rules to keep learning.'; break; }
           s.rules.push({ id: s.nextRuleId++, site: candidate.site, url: candidate.url, type: candidate.type, origin: candidate.origin,
             ...(candidate.selector ? { selector: candidate.selector } : {}),
             ad: decision.ad, essential: decision.essential, model: decision.model, classifierVersion: CLASSIFIER_VERSION, createdAt: new Date().toISOString() });
@@ -110,7 +110,7 @@ export default defineBackground(() => {
       if (generation === epoch) {
         cooldown = Date.now() + 60_000;
         pending.clear();
-        await updateState(s => { s.status = error instanceof Error && error.name === 'Error' ? error.message : 'Analyse fehlgeschlagen; vorhandener Schutz bleibt aktiv.'; });
+        await updateState(s => { s.status = error instanceof Error && error.name === 'Error' ? error.message : 'Analysis failed; existing protection stays active.'; });
       }
     } finally {
       active.delete(controller); working = false;
@@ -181,7 +181,7 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: any, sender) => {
     return (async () => {
       await ready;
-      if (sender.id !== browser.runtime.id || !message || typeof message.type !== 'string') throw new Error('Ungültige Nachricht.');
+      if (sender.id !== browser.runtime.id || !message || typeof message.type !== 'string') throw new Error('Invalid message.');
       if (message.type === 'context') return frameContext(sender);
       if (message.type === 'candidates') {
         if (!sender.tab || sender.tab.incognito || !Array.isArray(message.candidates)) return;
@@ -202,7 +202,7 @@ export default defineBackground(() => {
         }
         return;
       }
-      if (!trusted(sender)) throw new Error('Nur Extension-Seiten dürfen Einstellungen ändern.');
+      if (!trusted(sender)) throw new Error('Only extension pages may change settings.');
       if (message.type === 'state') {
         const state = structuredClone(await readState());
         // Full resource queries are used only by the blocker, not displayed or exported.
@@ -213,28 +213,28 @@ export default defineBackground(() => {
       }
       if (message.type === 'settings') {
         const input = message.settings as Settings;
-        if (!input || input.provider !== 'typesafe' || typeof input.model !== 'string' || !/^jev-[\w.-]{1,60}$/.test(input.model) || typeof input.aiEnabled !== 'boolean' || !Number.isInteger(input.dailyLimit) || input.dailyLimit < 1 || input.dailyLimit > 10000) throw new Error('Ungültige Einstellungen.');
-        if (input.aiEnabled && !await getKey()) throw new Error('Zuerst einen API-Key speichern.');
+        if (!input || input.provider !== 'typesafe' || typeof input.model !== 'string' || !/^jev-[\w.-]{1,60}$/.test(input.model) || typeof input.aiEnabled !== 'boolean' || !Number.isInteger(input.dailyLimit) || input.dailyLimit < 1 || input.dailyLimit > 10000) throw new Error('Invalid settings.');
+        if (input.aiEnabled && !await getKey()) throw new Error('Save an API key first.');
         stopLearning();
         await updateState(s => { s.settings = { ...s.settings, provider: 'typesafe', model: input.model, aiEnabled: input.aiEnabled, dailyLimit: input.dailyLimit }; });
         await notifyTabs(); return;
       }
       if (message.type === 'key') {
-        if (typeof message.key !== 'string' || message.key.length > 512 || /[\r\n]/.test(message.key)) throw new Error('Ungültiger Key.');
+        if (typeof message.key !== 'string' || message.key.length > 512 || /[\r\n]/.test(message.key)) throw new Error('Invalid key.');
         stopLearning(); await setKey(message.key.trim());
         if (!message.key.trim()) await updateState(s => { s.settings.aiEnabled = false; });
         await notifyTabs(); return;
       }
       if (message.type === 'test') {
-        const key = await getKey(); if (!key) throw new Error('Kein API-Key gespeichert.');
+        const key = await getKey(); if (!key) throw new Error('No API key saved.');
         // Synthetic data only; this explicitly initiated connection check is a paid API call.
         const state = await readState();
         await new TypeSafeProvider(key, state.settings.model).evaluate([{ id: 'connection', site: 'example.com', url: 'https://ads.example.com/banner.js', type: 'script', label: 'Advertising-only banner loader' }]);
-        return 'Verbindung erfolgreich.';
+        return 'Connection successful.';
       }
       if (message.type === 'site') {
         const site = httpUrl(`https://${message.site}/`)?.hostname;
-        if (!site || site !== message.site || typeof message.enabled !== 'boolean') throw new Error('Ungültige Website.');
+        if (!site || site !== message.site || typeof message.enabled !== 'boolean') throw new Error('Invalid website.');
         stopLearning();
         await updateState(s => { s.settings.disabledSites = s.settings.disabledSites.filter(d => d !== site); if (!message.enabled) s.settings.disabledSites.push(site); });
         await synchronize(); await notifyTabs(); return;
@@ -245,11 +245,11 @@ export default defineBackground(() => {
         await synchronize(); await notifyTabs(); return;
       }
       if (message.type === 'reset') {
-        stopLearning(); await updateState(s => { s.rules = []; s.status = 'Gelernte Regeln gelöscht. Freigaben bleiben erhalten.'; });
+        stopLearning(); await updateState(s => { s.rules = []; s.status = 'Learned rules deleted. Releases are kept.'; });
         await synchronize(); await notifyTabs(); return;
       }
       if (message.type === 'clearAllows') { stopLearning(); await updateState(s => { s.allows = []; }); await synchronize(); await notifyTabs(); return; }
-      throw new Error('Unbekannte Nachricht.');
+      throw new Error('Unknown message.');
     })();
   });
 });

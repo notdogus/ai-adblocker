@@ -34,7 +34,7 @@ export async function firefoxDriver() {
     await driver.setContext(firefox.Context.CHROME);
     await driver.executeScript(`gBrowser.selectedBrowser.loadURI(Services.io.newURI(arguments[0]), { triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal() });`, `moz-extension://${uuid}/options.html`);
     await driver.setContext(firefox.Context.CONTENT);
-    await driver.wait(async () => driver.executeScript('return !!document.querySelector("input[name=model]")'), 15000);
+    await driver.wait(async () => driver.executeScript('return !!document.querySelector("input[name=apiKey]")'), 15000);
     optionsHandle = await driver.getWindowHandle();
     await driver.switchTo().newWindow('tab'); pageHandle = await driver.getWindowHandle();
   }

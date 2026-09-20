@@ -20,7 +20,6 @@
     "test:browser": "tsx tests/browser/run.ts && npm run test:players",
     "test:players": "tsx tests/browser/player.ts && tsx tests/browser/youtube.ts",
     "test:players:live": "tsx tests/browser/player-live.ts",
-    "test:archivebate:live": "tsx tests/browser/archivebate-live.ts",
     "test:players:model": "tsx tests/browser/player-model-live.ts",
     "test:live": "tsx tests/browser/live.ts"
   },

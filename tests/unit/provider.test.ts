@@ -23,7 +23,7 @@ describe('TypeSafe contract', () => {
     await expect(provider.evaluate([candidate])).rejects.not.toThrow(/private|secret-key/);
   });
   it('fails open through an explicit error on network failure', async () => {
-    await expect(new TypeSafeProvider('test-key', 'test', async () => { throw new Error('request with secret-key failed'); }).evaluate([candidate])).rejects.toThrow('TypeSafe nicht erreichbar');
+    await expect(new TypeSafeProvider('test-key', 'test', async () => { throw new Error('request with secret-key failed'); }).evaluate([candidate])).rejects.toThrow('TypeSafe unreachable');
   });
   it('binds the default browser fetch receiver', async () => {
     const original = globalThis.fetch;

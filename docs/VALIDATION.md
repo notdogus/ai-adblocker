@@ -29,32 +29,6 @@ The Firefox test helper tolerates a specific Marionette disconnect during browse
 shutdown and stops Geckodriver; errors during test commands still fail the suite.
 Temporary Firefox add-ons are reinstalled into the retained test profile on restart.
 
-## Live website checks
-
-Tested `https://onepiece.tube/` and
-`https://onepiece.tube/anime/folge/1178` with AI disabled, so these results measure
-the bundled filters independently of learning.
-
-| Check | Chromium | Firefox |
-| --- | --- | --- |
-| Observed Google Ads, PowerAd, Intergient and Adscale endpoints | Blocked | Blocked |
-| Responses from those endpoints with protection enabled | 0 | 0 |
-| Visible tested advertisement containers | 0 | 0 |
-| Chat iframe still present | Yes | Yes |
-| Episode player frames still present | Yes | Yes |
-| Actual video playback advances | Yes | Not asserted |
-
-Chromium's unprotected baseline receives advertising responses and displays the
-tested ad containers. Protected runs produce browser request-failure events instead
-of responses. Firefox uses native extension `webRequest` response/error observers;
-Resource Timing entries alone are not interpreted as successful downloads.
-
-Chromium reports both tested player videos ready and advancing after programmatic
-muted playback. A separate viewport inspection confirms the visible player still
-renders. The site's consent overlay remains, as requested by the ads-only scope.
-Chat loading was checked without posting messages. These checks do not claim a
-complete interactive audit of chat, all navigation links, or every possible ad.
-
 ## Real TypeSafe learning
 
 A separate controlled fixture uses the actual TypeSafe API from the extension
@@ -72,7 +46,7 @@ actions use 0.85 plus the unchanged 0.10 essential-content veto and local
 intent/structure guards. These are impact-based policy thresholds, not a claim
 of population-level calibration.
 
-Run instructions are in the README. Raw live reports, screenshots, temporary
+Run instructions are in [Development](DEVELOPMENT.md). Raw live reports, screenshots, temporary
 profiles and API credentials are excluded from version control and release
 packages. GitHub Actions runs only deterministic offline checks and packages both
 browsers; live tests are explicit local actions.
@@ -93,7 +67,7 @@ popup/overlay rules survive restart and key removal. Current-page overlay remova
 manual release, a classless click shield, restoration when that element gains real
 media, and site bypass are exercised. No mocks ship in the extension.
 
-An Archivebate-style classless shield is first assessed from geometry and left
+A classless player shield is first assessed from geometry and left
 alone. Its subsequent popup attempt upgrades that same candidate despite the
 earlier assessment and despite a previously observed caller. Exactly one causal
 assessment learns the overlay; replacement shields disappear before another click.
@@ -116,47 +90,6 @@ stream URLs, captions and content metadata remain identical. A skip-like button
 outside ad state is untouched, a visible skip control inside ad state is clicked,
 content time is never advanced by the blocker, and site bypass restores responses.
 These are protocol fixtures, not proof of every live YouTube ad format.
-
-### Requested live pages
-
-- **AniWorld episode:** the unprotected comparison opened three advertising
-  windows. Protected runs opened zero. The requested episode loaded with
-  readyState 4; the live acceptance run observed its clock advancing beyond six
-  seconds. A repeated center click can pause an already playing video, so the live
-  runner checks playback state before repeating it.
-- **Archivebate:** investigation reproduced a blank-window popunder borrowed from
-  a fresh iframe and separate transparent click shields. The focused Chromium
-  test now continues the entry dialog and clicks the actual embedded player.
-  Initial playback advanced beyond four seconds, and the keyless revisit beyond
-  six seconds, both without media errors or a new window. No empty shield remained
-  at the player center. A separate fresh-profile run without any API key also
-  played beyond six seconds with zero windows. This is a specific live flow,
-  not a guarantee about every rotating creative or overlay. Reproduce with
-  `npm run test:archivebate:live`; a created popup counts as failure even if the
-  test closes it immediately.
-- **YouTube:** after declining optional cookies in the disposable profile, actual
-  playback advanced from 1.98 to 3.42 seconds without pausing or a media error.
-  Earlier immediate pauses came from the site's still-open consent dialog.
-  The adapter's ad-removal assertions
-  are the controlled browser cases above; this session did not establish a
-  reproducible live pre-roll/mid-roll ad sample. Server-stitched advertising is
-  outside this adapter.
-
-The focused real-Jev Archivebate run demonstrates the evidence upgrade: the
-unlabelled embedded-player shield scored ad 0.64 / essential 0.12 from geometry,
-then 0.86 / 0.05 after its popup attempt and became an overlay rule. Two popup
-callers also became scoped side-effect rules (0.92 / 0.07 and 0.92 / 0.05).
-The run used ten API calls, created no new window and played beyond six seconds.
-The model did not need to classify the entire player bundle as disposable.
-A repeated live session learned only the popup rules, illustrating that model
-judgments vary. Local shield protection still allowed playback on both visits
-with zero windows, but required two to three player clicks. One-click startup for
-every unknown or uncertain overlay is not established by these checks.
-
-Technical live reports remain in ignored `test-results/`. The live runner does
-not count autoplaying advertising videos or recommendation previews as successful
-playback of the requested video. Original diagnostic failures were used to add the
-fresh-iframe and classless-shield regressions; they were not treated as passes.
 
 ## Known coverage limits
 

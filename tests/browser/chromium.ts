@@ -16,7 +16,7 @@ export async function chromiumDriver() {
     worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker', { timeout: 15000 });
     const id = worker.url().split('/')[2];
     options = await context.newPage(); await options.goto(`chrome-extension://${id}/options.html`);
-    try { await options.waitForSelector('input[name=model]'); }
+    try { await options.waitForSelector('input[name=apiKey]'); }
     catch (error) {
       console.error('Options startup:', await options.locator('body').innerText());
       console.error('Background status:', await worker.evaluate(async () => {
@@ -37,7 +37,7 @@ export async function chromiumDriver() {
     async open(url: string) { await page.goto(url, { waitUntil: 'load' }); },
     async appReady() { return page.locator('#app-status').textContent(); },
     async screenshot(path: string) { await options.screenshot({ path, fullPage: true }); },
-    async refreshOptions() { await options.reload(); await options.waitForSelector('input[name=model]'); },
+    async refreshOptions() { await options.reload(); await options.waitForSelector('input[name=apiKey]'); },
     async restart() { await context.close(); await launch(); },
     async close() { await context.close(); await rm(profile, { recursive: true, force: true }); },
   };

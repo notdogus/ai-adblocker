@@ -64,7 +64,7 @@ for (const factory of factories) {
     await click('#navigate'); await delay(150);
     assert.equal(await execute('location.hash'), '#details', 'same-context navigation is not treated as a popup');
 
-    // Archivebate-style unlabelled shield: an uncertain geometry judgment must
+    // Unlabelled player shield: an uncertain geometry judgment must
     // not suppress stronger evidence when the same element triggers a popup.
     await execute('window.addClickShield()');
     await until(async () => (await driver.evaluations()).some(c => c.type === 'overlay' && !c.marker.trim() && !c.evidence.interceptsPlayback), 'unlabelled shield assessed from geometry');

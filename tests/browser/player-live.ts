@@ -2,13 +2,14 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromiumDriver } from './chromium';
 
-// These are explicitly requested public test pages. Reports contain only
-// technical player state, not titles, screenshots, page text or full media URLs.
-const urls = [
-  'https://aniworld.to/anime/stream/tomb-raider-king/staffel-1/episode-1',
-  'https://archivebate.com/watch/16451951',
-  'https://www.youtube.com/watch?v=jNQXAC9IVRw',
-];
+// Targets are supplied locally; no private test websites are published.
+const urls = (process.env.LIVE_TEST_URLS ?? '').split('\n').map(url => url.trim()).filter(Boolean);
+if (!urls.length) throw new Error('Set LIVE_TEST_URLS to the HTTP(S) pages you want to test.');
+for (const value of urls) {
+  const url = new URL(value);
+  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('Test URLs must use HTTP(S) without credentials.');
+}
+const embeddedOnly = process.env.LIVE_EMBEDDED_ONLY === '1';
 const driver = await chromiumDriver();
 const report: any[] = [];
 try {
@@ -33,7 +34,7 @@ try {
           }
         }
       }
-      // Inspect structure before selecting targets. No reading of adult content.
+      // Inspect player structure before selecting targets.
       for (const frame of driver.page.frames()) {
         const info = await frame.evaluate(() => ({ host: location.hostname, videos: document.querySelectorAll('video').length,
           gate: Boolean(document.querySelector('#verification') && getComputedStyle(document.querySelector('#verification')!).display !== 'none'),
@@ -44,7 +45,7 @@ try {
         entry.frames.push(info);
         if (info.gate) entry.blockedBy = 'site verification';
         if (entry.blockedBy || !info.videos || !/^https?:/.test(frame.url()) || entry.clicks.length) continue;
-        if (entry.site === 'archivebate.com' && frame === driver.page.mainFrame()) continue;
+        if (embeddedOnly && frame === driver.page.mainFrame()) continue;
         const video = frame.locator('video').first();
         if (!await video.isVisible().catch(() => false)) continue;
         // Click the actual surface coordinate, including an intercepted overlay.
@@ -67,7 +68,7 @@ try {
         const before = await frame.evaluate(() => [...document.querySelectorAll('video')].map(v => ({ time: v.currentTime, paused: v.paused, ready: v.readyState, error: v.error?.code ?? null }))).catch(() => []);
         await delay(400);
         const after = await frame.evaluate(() => [...document.querySelectorAll('video')].map(v => v.currentTime)).catch(() => []);
-        if (before.length && /^https?:/.test(frame.url()) && !(entry.site === 'archivebate.com' && frame === driver.page.mainFrame())) entry.playback.push({ host: new URL(frame.url()).hostname, videos: before.map((v,i) => ({ ...v, advanced: (after[i] ?? 0) > v.time })) });
+        if (before.length && /^https?:/.test(frame.url()) && !(embeddedOnly && frame === driver.page.mainFrame())) entry.playback.push({ host: new URL(frame.url()).hostname, videos: before.map((v,i) => ({ ...v, advanced: (after[i] ?? 0) > v.time })) });
       }
       const state = await driver.rpc('state');
       entry.rules = state.rules.filter((r: any) => r.site === entry.site).map((r: any) => ({ type: r.type, url: r.url, selector: r.selector, ad: r.ad, essential: r.essential }));

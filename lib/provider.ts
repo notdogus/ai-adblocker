@@ -26,14 +26,14 @@ export class TypeSafeProvider implements DecisionProvider {
         signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000),
         credentials: 'omit', redirect: 'error',
       });
-    } catch { throw new ProviderError('TypeSafe nicht erreichbar oder Zeitlimit überschritten.'); }
-    if (!response.ok) throw new ProviderError(response.status === 401 ? 'API-Key ungültig.' : [429, 529].includes(response.status) ? 'TypeSafe ausgelastet. Lernen pausiert vorübergehend.' : `TypeSafe-Anfrage fehlgeschlagen (${response.status}).`);
+    } catch { throw new ProviderError('TypeSafe unreachable or timed out.'); }
+    if (!response.ok) throw new ProviderError(response.status === 401 ? 'Invalid API key.' : [429, 529].includes(response.status) ? 'TypeSafe is busy. Learning paused temporarily.' : `TypeSafe request failed (${response.status}).`);
     let body: any;
-    try { body = await response.json(); } catch { throw new ProviderError('Ungültige TypeSafe-Antwort.'); }
-    if (typeof body?.model !== 'string' || !body?.answers) throw new ProviderError('Unvollständige TypeSafe-Antwort.');
+    try { body = await response.json(); } catch { throw new ProviderError('Invalid TypeSafe response.'); }
+    if (typeof body?.model !== 'string' || !body?.answers) throw new ProviderError('Incomplete TypeSafe response.');
     return candidates.map((candidate, index) => {
       const ad = body.answers[`ad_${index}`]; const essential = body.answers[`essential_${index}`];
-      if ([ad, essential].some(answer => answer?.type !== 'noul' || typeof answer.noul !== 'number' || !Number.isFinite(answer.noul) || answer.noul < 0 || answer.noul > 1)) throw new ProviderError('Ungültige Entscheidungswerte.');
+      if ([ad, essential].some(answer => answer?.type !== 'noul' || typeof answer.noul !== 'number' || !Number.isFinite(answer.noul) || answer.noul < 0 || answer.noul > 1)) throw new ProviderError('Invalid decision values.');
       return { id: candidate.id, ad: ad.noul, essential: essential.noul, model: body.model };
     });
   }
